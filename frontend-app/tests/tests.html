@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Selfcheck - Live Tests</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            background: #f9f9f9;
+            padding: 2rem;
+            color: #333;
+        }
+
+        h1 {
+            color: #0d6efd;
+            margin-bottom: 1rem;
+        }
+
+        button {
+            padding: 0.6rem 1.2rem;
+            font-size: 1rem;
+            border: none;
+            background-color: #0d6efd;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        button:disabled {
+            opacity: 0.6;
+        }
+
+        ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        li {
+            margin-bottom: 0.5rem;
+        }
+
+        .pass::before {
+            content: "✔ ";
+            color: green;
+        }
+
+        .fail::before {
+            content: "✘ ";
+            color: red;
+        }
+
+        .pending::before {
+            content: "❓ ";
+            color: orange;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #0d6efd;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            animation: spin 1s linear infinite;
+            margin-right: 8px;
+        }
+
+        .flex {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .error-box {
+            background: #ffeeee;
+            color: #a00;
+            padding: 1rem;
+            margin-top: 1rem;
+            border: 1px solid #a00;
+            border-radius: 4px;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Selfcheck</h1>
+
+    <div class="flex" id="startSection">
+        <div id="spinner" style="display: none;" class="spinner"></div>
+        <button id="startBtn">Iniciar tests</button>
+    </div>
+
+    <ul id="testResults">
+        <li class="pending">API responde con status 200</li>
+        <li class="pending">API devuelve un array</li>
+    </ul>
+
+    <div id="errorDetails" class="error-box" style="display: none;"></div>
+
+    <script>
+        const tests = [
+            { label: "API responde con status 200", pass: false },
+            { label: "API devuelve un array", pass: false },
+        ];
+
+        const testResults = document.getElementById("testResults");
+        const errorDetails = document.getElementById("errorDetails");
+        const spinner = document.getElementById("spinner");
+        const startBtn = document.getElementById("startBtn");
+
+        function updateUI(index, result, errorMessage = null) {
+            const li = testResults.children[index];
+            li.className = result ? 'pass' : 'fail';
+            if (!result && errorMessage) {
+                errorDetails.style.display = 'block';
+                errorDetails.textContent = errorMessage;
+            }
+        }
+
+        async function runTests() {
+            spinner.style.display = 'inline-block';
+            startBtn.disabled = true;
+
+            try {
+                const controller = new AbortController();
+                const timeout = setTimeout(() => controller.abort(), 30000);
+
+                const res = await fetch('/api/files/data', { signal: controller.signal });
+
+                clearTimeout(timeout);
+
+                updateUI(0, res.status === 200);
+
+                if (res.status === 200) {
+                    try {
+                        const data = await res.json();
+                        const isArray = Array.isArray(data);
+                        updateUI(1, isArray);
+                    } catch (jsonError) {
+                        updateUI(1, false, 'Error al parsear JSON: ' + jsonError.message);
+                    }
+                } else {
+                    updateUI(1, false, 'La respuesta del servidor no fue 200 (status ' + res.status + ').');
+                }
+
+            } catch (e) {
+                updateUI(0, false, 'Error al conectar con /api/files/data:\n' + e.message);
+                updateUI(1, false);
+            }
+
+            spinner.style.display = 'none';
+        }
+
+        startBtn.addEventListener('click', runTests);
+    </script>
+</body>
+
+</html>
