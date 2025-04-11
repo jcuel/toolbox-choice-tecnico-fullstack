@@ -1,0 +1,15 @@
+FROM node:14-alpine
+WORKDIR /app
+
+ARG PORT=3000
+ARG API_URL
+ARG API_KEY
+
+ENV PORT=$PORT
+ENV API_URL=$API_URL
+ENV API_KEY=$API_KEY
+
+COPY . .
+RUN npm install
+EXPOSE $PORT
+CMD ["npm", "start"]
