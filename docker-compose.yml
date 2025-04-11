@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend-api
+      args:
+        API_URL: https://echo-serv.tbxnet.com/v1/secret
+        API_KEY: aSuperSecretKey
+        PORT: 3000
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+    networks:
+      - app-network
+
+  frontend:
+    build:
+      context: ./frontend-app
+      args:
+        VITE_API_URL: http://backend:3000
+        
+    ports:
+      - "8080:8080"
+    depends_on:
+      - backend
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
