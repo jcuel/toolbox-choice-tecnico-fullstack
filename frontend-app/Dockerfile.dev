@@ -1,0 +1,17 @@
+FROM node:18-alpine
+WORKDIR /app
+
+COPY . .
+
+ARG VITE_API_URL
+ENV VITE_API_URL=$VITE_API_URL
+
+
+RUN npm install
+RUN npm run build
+
+RUN npm install -g serve
+EXPOSE 5173
+
+# Run in dev mode for live preview
+CMD ["npm", "run", "dev"]
