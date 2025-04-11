@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Backend Selfcheck</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #f9f9f9;
+      padding: 2rem;
+      color: #333;
+    }
+    h1 {
+      color: #0d6efd;
+      margin-bottom: 1rem;
+    }
+    button {
+      padding: 0.6rem 1.2rem;
+      font-size: 1rem;
+      border: none;
+      background-color: #0d6efd;
+      color: white;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:disabled {
+      opacity: 0.6;
+    }
+    ul {
+      list-style: none;
+      padding-left: 0;
+    }
+    li {
+      margin-bottom: 0.5rem;
+    }
+    .pass::before {
+      content: "✔ ";
+      color: green;
+    }
+    .fail::before {
+      content: "✘ ";
+      color: red;
+    }
+    .pending::before {
+      content: "❓ ";
+      color: orange;
+    }
+    .spinner {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #0d6efd;
+      border-radius: 50%;
+      width: 32px;
+      height: 32px;
+      animation: spin 1s linear infinite;
+      margin-right: 8px;
+    }
+    .flex {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .error-box {
+      background: #ffeeee;
+      color: #a00;
+      padding: 1rem;
+      margin-top: 1rem;
+      border: 1px solid #a00;
+      border-radius: 4px;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <h1>Backend Selfcheck</h1>
+
+  <div class="flex" id="startSection">
+    <div id="spinner" style="display: none;" class="spinner"></div>
+    <button id="startBtn">Iniciar tests</button>
+  </div>
+
+  <ul id="testResults">
+    <li class="pending">GET /health responde 200</li>
+    <li class="pending">GET /files/data responde 200</li>
+    <li class="pending">GET /files/data devuelve un array</li>
+    <li class="pending">GET /files/list devuelve un array</li>
+    <li class="pending">API externa responde 200 (Echo API)</li>
+  </ul>
+
+  <div id="errorDetails" class="error-box" style="display: none;"></div>
+
+  <script>
+    const testResults = document.getElementById("testResults");
+    const errorDetails = document.getElementById("errorDetails");
+    const spinner = document.getElementById("spinner");
+    const startBtn = document.getElementById("startBtn");
+
+    function updateUI(index, result, errorMessage = null) {
+      const li = testResults.children[index];
+      li.className = result ? 'pass' : 'fail';
+      if (!result && errorMessage) {
+        errorDetails.style.display = 'block';
+        errorDetails.textContent += `\n${li.textContent}\n${errorMessage}\n`;
+      }
+    }
+
+    async function runTests() {
+      spinner.style.display = 'inline-block';
+      startBtn.disabled = true;
+      errorDetails.style.display = 'none';
+      errorDetails.textContent = '';
+
+      const tests = [
+        { url: '/health', index: 0 },
+        { url: '/files/data', index: 1 },
+        { url: '/files/data', index: 2, validate: async (res) => Array.isArray(await res.json()) },
+        { url: '/files/list', index: 3, validate: async (res) => Array.isArray(await res.json()) },
+        { url: 'https://echo-serv.tbxnet.com/v1/secret/files', index: 4, headers: { Authorization: 'Bearer aSuperSecretKey' } }
+      ];
+
+      for (const test of tests) {
+        try {
+          const res = await fetch(test.url, {
+            headers: test.headers || {},
+          });
+
+          if (test.index === 1 || test.index === 0 || test.index === 4) {
+            updateUI(test.index, res.status === 200, `Status: ${res.status}`);
+          } else if (test.validate) {
+            const valid = await test.validate(res);
+            updateUI(test.index, valid, `Respuesta inesperada en ${test.url}`);
+          }
+        } catch (err) {
+          updateUI(test.index, false, err.message);
+        }
+      }
+
+      spinner.style.display = 'none';
+    }
+
+    startBtn.addEventListener('click', runTests);
+  </script>
+</body>
+</html>
